@@ -1,43 +1,42 @@
+using APIPracticas.Data;
+using APIPracticas.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.OData;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.OData.ModelBuilder;
 using System.Text.Json.Serialization;
+
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
-builder.Services.ConfigureHttpJsonOptions(options =>
+var modelBuilder = new ODataConventionModelBuilder();
+modelBuilder.EntitySet<Alumnos>("Alumnos");
+modelBuilder.EntitySet<Asesores>("Asesores");
+modelBuilder.EntitySet<Actividades>("Actividades");
+modelBuilder.EntitySet<Observaciones>("Observaciones");
+
+builder.Services.AddControllers().AddOData(options =>
 {
-    options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
+    options.AddRouteComponents("odata", modelBuilder.GetEdmModel());
+    options.EnableQueryFeatures();
 });
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddDbContext<DBContext>(options =>
+{
+    options.UseInMemoryDatabase("PracticasDB");
+});
 
 var app = builder.Build();
+app.MapControllers();
 
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    app.MapOpenApi();
+    var dbContext = scope.ServiceProvider.GetRequiredService<DBContext>();
+    AppSeeder.Initialize(dbContext);
 }
 
-Todo[] sampleTodos =
-[
-    new(1, "Walk the dog"),
-    new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-    new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-    new(4, "Clean the bathroom"),
-    new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
-];
-
-var todosApi = app.MapGroup("/todos");
-todosApi.MapGet("/", () => sampleTodos)
-        .WithName("GetTodos");
-
-todosApi.MapGet("/{id}", Results<Ok<Todo>, NotFound> (int id) =>
-    sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-        ? TypedResults.Ok(todo)
-        : TypedResults.NotFound())
-    .WithName("GetTodoById");
-
-app.Run();
+    app.Run();
 
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
 
