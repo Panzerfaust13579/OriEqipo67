@@ -1,0 +1,11 @@
+﻿<ContentPage xmlns:local="clr-namespace:PracticasProfecionales"
+             xmlns:components="clr-namespace:PracticasProfecionales.Components"
+             x:Class="PracticasProfecionales.MainPage">
+
+    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
+        <BlazorWebView.RootComponents>
+            <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
+        </BlazorWebView.RootComponents>
+    </BlazorWebView>
+
+</ContentPage>
