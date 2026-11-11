@@ -1,3 +1,6 @@
 <Solution>
-  <Project Path="PracticasProfecionales.csproj" />
+  <Project Path="../APIPracticas/APIPracticas.csproj" />
+  <Project Path="PracticasProfecionales.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 </Solution>
