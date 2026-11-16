@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace APIPracticas.Data
 
 {
-    public class DBContext(DbContextOptions<DbContext> options) : DbContext(options)
+    public class DBContext(DbContextOptions<DBContext> options) : DbContext(options)
     {
         public DbSet<Alumnos> Alumnos { get; set; }
         public DbSet<Asesores> Asesores { get; set; }
@@ -27,7 +27,7 @@ namespace APIPracticas.Data
                 entity.Property(e => e.Carrera).IsRequired().HasMaxLength(200);
                 entity.HasMany(e => e.Actividades)
                       .WithOne(a => a.Alumno)
-                      .HasForeignKey("AlumnoId")
+                      .HasForeignKey(a => a.AlumnoId)
                       .OnDelete(DeleteBehavior.Cascade);
                 entity.HasMany(e => e.Observaciones)
                       .WithOne(o => o.Alumno)
@@ -59,7 +59,7 @@ namespace APIPracticas.Data
                 entity.Property(e => e.Fecha).IsRequired();
                 entity.HasOne(e => e.Alumno)
                       .WithMany(a => a.Actividades)
-                      .HasForeignKey("AlumnoId")
+                      .HasForeignKey(a => a.AlumnoId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 

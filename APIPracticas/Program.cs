@@ -34,6 +34,7 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<DBContext>();
     AppSeeder.Initialize(dbContext);
+    APIPracticas.Services.ClasificadorCompetencias.Verificar();
 }
 
     app.Run();
