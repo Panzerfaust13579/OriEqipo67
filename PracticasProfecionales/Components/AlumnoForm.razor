@@ -1,0 +1,54 @@
+﻿@using PracticasProfecionales.Models
+
+@* Shared by the create form (Alumnos) and the edit form (AlumnoDetalle). *@
+<EditForm Model="Alumno" OnValidSubmit="OnValidSubmit" FormName="alumno">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label" for="al-nombre">Nombre *</label>
+        <InputText id="al-nombre" class="form-control" @bind-Value="Alumno.Nombre" />
+        <ValidationMessage For="() => Alumno.Nombre" class="text-danger" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="al-correo">Correo *</label>
+        <InputText id="al-correo" type="email" class="form-control" @bind-Value="Alumno.Correo" />
+        <ValidationMessage For="() => Alumno.Correo" class="text-danger" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="al-carrera">Carrera *</label>
+        <InputText id="al-carrera" class="form-control" @bind-Value="Alumno.Carrera" />
+        <ValidationMessage For="() => Alumno.Carrera" class="text-danger" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="al-empresa">Empresa *</label>
+        <InputText id="al-empresa" class="form-control" @bind-Value="Alumno.Empresa" />
+        <ValidationMessage For="() => Alumno.Empresa" class="text-danger" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="al-horas">Horas requeridas *</label>
+        <InputNumber id="al-horas" class="form-control" @bind-Value="Alumno.HorasRequeridas" />
+        <ValidationMessage For="() => Alumno.HorasRequeridas" class="text-danger" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="al-asesor">Asesor *</label>
+        <InputSelect id="al-asesor" class="form-select" @bind-Value="Alumno.AsesorId">
+            <option value="">Selecciona...</option>
+            @foreach (var a in Asesores)
+            {
+                <option value="@a.Id">@a.Nombre</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Alumno.AsesorId" class="text-danger" />
+    </div>
+
+    <button type="submit" class="btn btn-primary" disabled="@Guardando"><Icon Name="save" /> Guardar</button>
+    <button type="button" class="btn btn-secondary" @onclick="OnCancel">Cancelar</button>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired] public Alumnos Alumno { get; set; } = default!;
+    [Parameter] public List<Asesores> Asesores { get; set; } = [];
+    [Parameter] public bool Guardando { get; set; }
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

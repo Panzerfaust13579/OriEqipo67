@@ -1,0 +1,74 @@
+﻿@page "/"
+@page "/alumnos"
+@inject Services.PracticasService Practicas
+
+<h1>Alumnos en prácticas</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger"><Icon Name="message-error" /> @error</div>
+}
+
+<a class="btn btn-primary mb-3" href="alumnos/nuevo"><Icon Name="add" /> Nuevo alumno</a>
+
+<div class="mb-3">
+    <label class="form-label" for="filtro-asesor">Filtrar por asesor</label>
+    <select id="filtro-asesor" class="form-select" @bind="asesorId">
+        <option value="">Todos</option>
+        @foreach (var a in asesores)
+        {
+            <option value="@a.Id">@a.Nombre</option>
+        }
+    </select>
+</div>
+
+@if (alumnos is null)
+{
+    @if (error is null)
+    {
+        <p><em>Cargando...</em></p>
+    }
+}
+else if (Filtrados.Count == 0)
+{
+    <p>No hay alumnos registrados.</p>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var alumno in Filtrados)
+        {
+            <a class="list-group-item list-group-item-action d-flex align-items-center gap-3" href="alumnos/@Uri.EscapeDataString(alumno.Id)">
+                <span class="sap-avatar"><Icon Name="employee" /></span>
+                <span class="flex-grow-1">
+                    <strong>@alumno.Nombre</strong>
+                    <span class="d-block small text-muted">@alumno.Carrera · @alumno.Empresa</span>
+                </span>
+                <Icon Name="slim-arrow-right" />
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private List<Models.Alumnos>? alumnos;
+    private List<Models.Asesores> asesores = [];
+    private string asesorId = string.Empty;
+    private string? error;
+
+    private List<Models.Alumnos> Filtrados =>
+        asesorId == string.Empty ? alumnos ?? [] : (alumnos ?? []).Where(a => a.AsesorId == asesorId).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            alumnos = await Practicas.GetAlumnosAsync();
+            asesores = await Practicas.GetAsesoresAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo conectar con la API: {ex.Message}";
+        }
+    }
+}

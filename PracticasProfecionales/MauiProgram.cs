@@ -16,6 +16,11 @@ namespace PracticasProfecionales
 
             builder.Services.AddMauiBlazorWebView();
 
+            // Android emulator reaches the host PC at 10.0.2.2, not localhost. Port matches APIPracticas launchSettings.
+            var apiBaseUrl = DeviceInfo.Platform == DevicePlatform.Android ? "http://10.0.2.2:5050/" : "http://localhost:5050/";
+            builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+            builder.Services.AddSingleton<Services.PracticasService>();
+
 #if DEBUG
     		builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();

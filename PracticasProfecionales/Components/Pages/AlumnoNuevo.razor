@@ -1,0 +1,52 @@
+﻿@page "/alumnos/nuevo"
+@inject Services.PracticasService Practicas
+@inject NavigationManager Nav
+
+<a href="alumnos"><Icon Name="nav-back" /> Volver</a>
+
+<h1>Nuevo alumno</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger"><Icon Name="message-error" /> @error</div>
+}
+
+<section class="card card-body">
+    <AlumnoForm Alumno="nuevo" Asesores="asesores" Guardando="guardando" OnValidSubmit="CrearAsync" OnCancel='() => Nav.NavigateTo("alumnos")' />
+</section>
+
+@code {
+    private Models.Alumnos nuevo = new();
+    private List<Models.Asesores> asesores = [];
+    private string? error;
+    private bool guardando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            asesores = await Practicas.GetAsesoresAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo conectar con la API: {ex.Message}";
+        }
+    }
+
+    private async Task CrearAsync()
+    {
+        guardando = true;
+        error = null;
+        try
+        {
+            nuevo.Id = Guid.NewGuid().ToString();
+            await Practicas.CreateAlumnoAsync(nuevo);
+            Nav.NavigateTo("alumnos");
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo guardar: {ex.Message}";
+            guardando = false;
+        }
+    }
+}

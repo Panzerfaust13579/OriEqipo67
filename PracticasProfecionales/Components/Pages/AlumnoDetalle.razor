@@ -1,0 +1,368 @@
+﻿@page "/alumnos/{Id}"
+@using PracticasProfecionales.Models
+@inject Services.PracticasService Practicas
+@inject NavigationManager Nav
+
+<a href="alumnos"><Icon Name="nav-back" /> Volver</a>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger mt-2"><Icon Name="message-error" /> @error</div>
+}
+else if (alumno is null)
+{
+    <p><em>Cargando...</em></p>
+}
+else
+{
+    @if (editando)
+    {
+        <h1 class="h3">Editar alumno</h1>
+        <section class="card card-body mb-3">
+            <AlumnoForm Alumno="alumno" Asesores="asesores" Guardando="guardando" OnValidSubmit="ActualizarAsync" OnCancel="CancelarEdicionAsync" />
+        </section>
+    }
+    else
+    {
+        <h1>@alumno.Nombre</h1>
+        <p>@alumno.Carrera · @alumno.Empresa · @alumno.Correo</p>
+        <div class="mb-3">
+            <button class="btn btn-outline-secondary" @onclick="EditarAsync"><Icon Name="edit" /> Editar</button>
+            @if (confirmarBorrado)
+            {
+                <button class="btn btn-danger" @onclick="EliminarAsync" disabled="@guardando"><Icon Name="delete" /> Confirmar: eliminar alumno y su historial</button>
+                <button class="btn btn-secondary" @onclick="() => confirmarBorrado = false">Cancelar</button>
+            }
+            else
+            {
+                <button class="btn btn-outline-danger" @onclick="() => confirmarBorrado = true"><Icon Name="delete" /> Eliminar</button>
+            }
+        </div>
+    }
+
+    <a class="btn btn-outline-primary mb-3" href="alumnos/@Uri.EscapeDataString(Id)/competencias"><Icon Name="ai" /> Mapa de competencias (IA)</a>
+
+    <h2 class="h5">Horas acumuladas: @HorasAcumuladas / @alumno.HorasRequeridas</h2>
+    <div class="progress mb-3" role="progressbar" aria-label="Avance de horas" aria-valuenow="@Avance" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" style="width: @(Avance)%">@(Avance)%</div>
+    </div>
+
+    <section class="card card-body mt-4">
+    <h2 class="h4">Registrar actividad</h2>
+    <EditForm Model="nueva" OnValidSubmit="GuardarAsync" FormName="nueva-actividad">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="nombre">Nombre *</label>
+            <InputText id="nombre" class="form-control" @bind-Value="nueva.Nombre" />
+            <ValidationMessage For="() => nueva.Nombre" class="text-danger" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="descripcion">Descripción *</label>
+            <InputTextArea id="descripcion" class="form-control" @bind-Value="nueva.Descripcion" />
+            <ValidationMessage For="() => nueva.Descripcion" class="text-danger" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="horas">Horas *</label>
+            <InputNumber id="horas" class="form-control" step="0.5" @bind-Value="nueva.Horas" />
+            <ValidationMessage For="() => nueva.Horas" class="text-danger" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Evidencia (foto) *</label>
+            <div>
+                <button type="button" class="btn btn-outline-secondary" @onclick="() => FotoAsync(true)" disabled="@(!MediaPicker.Default.IsCaptureSupported)"><Icon Name="camera" /> Tomar foto</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="() => FotoAsync(false)"><Icon Name="picture" /> Elegir foto</button>
+            </div>
+            @if (!string.IsNullOrEmpty(nueva.Evidencia))
+            {
+                <img src="@nueva.Evidencia" alt="Evidencia seleccionada" class="img-thumbnail mt-2" style="max-height: 150px" />
+            }
+            @if (fotoError is not null)
+            {
+                <div class="text-danger">@fotoError</div>
+            }
+            <ValidationMessage For="() => nueva.Evidencia" class="text-danger" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Ubicación en la empresa *</label>
+            <div>
+                <button type="button" class="btn btn-outline-secondary" @onclick="UbicarAsync" disabled="@ubicando">
+                    <Icon Name="locate-me" />
+                    @(ubicando ? "Obteniendo ubicación..." : "Registrar ubicación (GPS)")
+                </button>
+                @if (nueva.Latitud is not null)
+                {
+                    <span class="ms-2 text-success">@nueva.Latitud?.ToString("F5"), @nueva.Longitud?.ToString("F5")</span>
+                }
+            </div>
+            @if (gpsError is not null)
+            {
+                <div class="text-danger">@gpsError</div>
+            }
+            <ValidationMessage For="() => nueva.Latitud" class="text-danger" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@guardando"><Icon Name="save" /> Guardar</button>
+    </EditForm>
+    </section>
+
+    <h2 class="h4 mt-4">Actividades</h2>
+    @if (actividades.Count == 0)
+    {
+        <p>Sin actividades registradas.</p>
+    }
+    <ul class="list-group">
+        @foreach (var a in actividades)
+        {
+            <li class="list-group-item">
+                <strong>@a.Nombre</strong> <span class="small text-muted"><Icon Name="history" /> @a.Fecha.ToString("d") · @a.Horas h</span>
+                <div>@a.Descripcion</div>
+                @if (!string.IsNullOrEmpty(a.Evidencia))
+                {
+                    <img src="@a.Evidencia" alt="Evidencia de @a.Nombre" class="img-thumbnail mt-1" style="max-height: 120px" />
+                }
+                @if (a.Latitud is not null)
+                {
+                    <div class="small text-muted"><Icon Name="locate-me" Label="Ubicación" /> @a.Latitud?.ToString("F5"), @a.Longitud?.ToString("F5")</div>
+                }
+            </li>
+        }
+    </ul>
+
+    <section class="card card-body mt-4">
+    <h2 class="h4">Observaciones del asesor</h2>
+    <EditForm Model="observacion" OnValidSubmit="ObservarAsync" FormName="nueva-observacion">
+        <DataAnnotationsValidator />
+        <div class="mb-3">
+            <label class="form-label" for="comentario">Comentario *</label>
+            <InputTextArea id="comentario" class="form-control" @bind-Value="observacion.Comentario" />
+            <ValidationMessage For="() => observacion.Comentario" class="text-danger" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="calificacion">Calificación (0-10)</label>
+            <InputNumber id="calificacion" class="form-control" @bind-Value="observacion.Calificacion" />
+            <ValidationMessage For="() => observacion.Calificacion" class="text-danger" />
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@guardando"><Icon Name="comment" /> Agregar observación</button>
+    </EditForm>
+    </section>
+    <ul class="list-group mt-3">
+        @foreach (var o in observaciones)
+        {
+            <li class="list-group-item">
+                <span class="small text-muted">@o.Fecha.ToString("d") · @o.Calificacion/10</span>
+                <div>@o.Comentario</div>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private Models.Alumnos? alumno;
+    private List<Actividades> actividades = [];
+    private Actividades nueva = new();
+    private List<Observaciones> observaciones = [];
+    private Observaciones observacion = new();
+    private string? fotoError;
+    private List<Asesores> asesores = [];
+    private bool editando;
+    private bool confirmarBorrado;
+
+    private double HorasAcumuladas => actividades.Sum(a => a.Horas);
+    private int Avance => alumno is null || alumno.HorasRequeridas <= 0 ? 0 : (int)Math.Min(100, HorasAcumuladas * 100 / alumno.HorasRequeridas);
+    private string? error;
+    private string? gpsError;
+    private bool ubicando;
+    private bool guardando;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            alumno = await Practicas.GetAlumnoAsync(Id);
+            if (alumno is null)
+            {
+                error = "Alumno no encontrado.";
+                return;
+            }
+            actividades = await Practicas.GetActividadesByAlumnoAsync(Id);
+            observaciones = await Practicas.GetObservacionesByAlumnoAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo conectar con la API: {ex.Message}";
+        }
+    }
+
+    private async Task UbicarAsync()
+    {
+        ubicando = true;
+        gpsError = null;
+        try
+        {
+            // GetLocationAsync asks for the location permission itself.
+            var location = await Geolocation.Default.GetLocationAsync(
+                new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(15)));
+            if (location is null)
+            {
+                gpsError = "No se pudo obtener la ubicación.";
+                return;
+            }
+            nueva.Latitud = location.Latitude;
+            nueva.Longitud = location.Longitude;
+        }
+        catch (PermissionException)
+        {
+            gpsError = "Permiso de ubicación denegado.";
+        }
+        catch (FeatureNotEnabledException)
+        {
+            gpsError = "Activa el GPS del dispositivo.";
+        }
+        catch (Exception ex)
+        {
+            gpsError = $"Error de GPS: {ex.Message}";
+        }
+        finally
+        {
+            ubicando = false;
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        guardando = true;
+        try
+        {
+            nueva.Id = Guid.NewGuid().ToString();
+            nueva.AlumnoId = Id;
+            nueva.Fecha = DateTime.Now;
+            await Practicas.CreateActividadAsync(nueva);
+            nueva = new();
+            actividades = await Practicas.GetActividadesByAlumnoAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo guardar: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private async Task FotoAsync(bool camara)
+    {
+        fotoError = null;
+        try
+        {
+            // Downscale so the base64 photo stays small in the request and the DB.
+            var opciones = new MediaPickerOptions { MaximumWidth = 1280, MaximumHeight = 1280, CompressionQuality = 70, SelectionLimit = 1 };
+            var foto = camara
+                ? await MediaPicker.Default.CapturePhotoAsync(opciones)
+                : (await MediaPicker.Default.PickPhotosAsync(opciones))?.FirstOrDefault();
+            if (foto is null) return;
+            using var stream = await foto.OpenReadAsync();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            nueva.Evidencia = $"data:{foto.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+        }
+        catch (PermissionException)
+        {
+            fotoError = "Permiso de cámara o galería denegado.";
+        }
+        catch (Exception ex)
+        {
+            fotoError = $"No se pudo obtener la foto: {ex.Message}";
+        }
+    }
+
+    private async Task ObservarAsync()
+    {
+        guardando = true;
+        try
+        {
+            observacion.Id = Guid.NewGuid().ToString();
+            observacion.AlumnoId = Id;
+            observacion.Fecha = DateTime.Now;
+            await Practicas.CreateObservacionAsync(observacion);
+            observacion = new();
+            observaciones = await Practicas.GetObservacionesByAlumnoAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo guardar: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private async Task EditarAsync()
+    {
+        try
+        {
+            asesores = await Practicas.GetAsesoresAsync();
+            editando = true;
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo conectar con la API: {ex.Message}";
+        }
+    }
+
+    private async Task ActualizarAsync()
+    {
+        guardando = true;
+        try
+        {
+            await Practicas.UpdateAlumnoAsync(alumno!);
+            editando = false;
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo guardar: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    // The form edits the loaded object in place, so cancelling reloads it to drop the changes.
+    private async Task CancelarEdicionAsync()
+    {
+        editando = false;
+        try
+        {
+            alumno = await Practicas.GetAlumnoAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo conectar con la API: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarAsync()
+    {
+        guardando = true;
+        try
+        {
+            // The API cascades the delete to the student's activities and observations.
+            await Practicas.DeleteAlumnoAsync(Id);
+            Nav.NavigateTo("alumnos");
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo eliminar: {ex.Message}";
+            guardando = false;
+        }
+    }
+}

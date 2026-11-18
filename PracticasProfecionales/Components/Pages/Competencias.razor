@@ -1,0 +1,86 @@
+﻿@page "/alumnos/{Id}/competencias"
+@using PracticasProfecionales.Models
+@inject Services.PracticasService Practicas
+
+<a href="alumnos/@Uri.EscapeDataString(Id)"><Icon Name="nav-back" /> Volver</a>
+
+<h1>Mapa de competencias del perfil de egreso</h1>
+<p class="text-muted">
+    La IA clasifica cada actividad registrada según las competencias del perfil de egreso
+    y señala las que no tienen evidencia, con sugerencias para el asesor.
+</p>
+
+<button class="btn btn-primary" @onclick="AnalizarAsync" disabled="@analizando">
+    <Icon Name="ai" /> @(analizando ? "Analizando registros..." : "Analizar con IA")
+</button>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger mt-3"><Icon Name="message-error" /> @error</div>
+}
+
+@if (mapa is not null)
+{
+    <div class="alert alert-info mt-3" role="status"><Icon Name="message-information" /> @mapa.Resumen</div>
+
+    @foreach (var c in mapa.Competencias)
+    {
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <strong><Icon Name="bar-chart" /> @c.Nombre</strong>
+                    <span class="badge @(c.Actividades == 0 ? "bg-danger" : "bg-success")">@c.Nivel</span>
+                </div>
+                <div class="progress my-2" role="progressbar" aria-label="Horas en @c.Nombre"
+                     aria-valuenow="@c.Horas" aria-valuemin="0" aria-valuemax="@MaxHoras">
+                    <div class="progress-bar @(c.Actividades == 0 ? "bg-danger" : "")" style="width: @Ancho(c)%"></div>
+                </div>
+                <div class="small text-muted">@c.Horas h · @c.Actividades actividad(es)</div>
+                @if (c.Evidencias.Count > 0)
+                {
+                    <div class="small">Evidencia: @string.Join(", ", c.Evidencias)</div>
+                }
+                @if (c.Sugerencia is not null)
+                {
+                    <div class="small mt-1"><strong>Sugerencia para el asesor:</strong> @c.Sugerencia</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (mapa.ActividadesSinClasificar > 0)
+    {
+        <p class="small text-muted">@mapa.ActividadesSinClasificar actividad(es) no se pudieron asociar a ninguna competencia.</p>
+    }
+    <p class="small text-muted">Resultado simulado (mock) del clasificador de IA (Azure OpenAI / Azure AI Language); ver docs/PropuestaIA.md.</p>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private MapaCompetencias? mapa;
+    private string? error;
+    private bool analizando;
+
+    // Bars are relative to the strongest competency, with a 1h floor to avoid dividing by zero.
+    private double MaxHoras => Math.Max(1, mapa?.Competencias.Max(c => c.Horas) ?? 1);
+    private int Ancho(CompetenciaResultado c) => c.Actividades == 0 ? 2 : (int)(c.Horas * 100 / MaxHoras);
+
+    private async Task AnalizarAsync()
+    {
+        analizando = true;
+        error = null;
+        try
+        {
+            mapa = await Practicas.GetMapaCompetenciasAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudo analizar: {ex.Message}";
+        }
+        finally
+        {
+            analizando = false;
+        }
+    }
+}
